@@ -1,0 +1,11 @@
+D:\dev\Exercises\GisCollection\GisCollection\bin\Debug\netcoreapp2.2\GisCollection.deps.json
+D:\dev\Exercises\GisCollection\GisCollection\bin\Debug\netcoreapp2.2\GisCollection.runtimeconfig.json
+D:\dev\Exercises\GisCollection\GisCollection\bin\Debug\netcoreapp2.2\GisCollection.runtimeconfig.dev.json
+D:\dev\Exercises\GisCollection\GisCollection\bin\Debug\netcoreapp2.2\GisCollection.dll
+D:\dev\Exercises\GisCollection\GisCollection\bin\Debug\netcoreapp2.2\GisCollection.pdb
+D:\dev\Exercises\GisCollection\GisCollection\obj\Debug\netcoreapp2.2\GisCollection.csprojAssemblyReference.cache
+D:\dev\Exercises\GisCollection\GisCollection\obj\Debug\netcoreapp2.2\GisCollection.csproj.CoreCompileInputs.cache
+D:\dev\Exercises\GisCollection\GisCollection\obj\Debug\netcoreapp2.2\GisCollection.AssemblyInfoInputs.cache
+D:\dev\Exercises\GisCollection\GisCollection\obj\Debug\netcoreapp2.2\GisCollection.AssemblyInfo.cs
+D:\dev\Exercises\GisCollection\GisCollection\obj\Debug\netcoreapp2.2\GisCollection.dll
+D:\dev\Exercises\GisCollection\GisCollection\obj\Debug\netcoreapp2.2\GisCollection.pdb
