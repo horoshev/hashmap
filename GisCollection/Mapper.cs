@@ -3,6 +3,7 @@ using System.Linq;
 using System.Reflection;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 
 namespace GisCollection
 {
@@ -34,7 +35,7 @@ namespace GisCollection
     /// <typeparam name="TKey">Type of keys in collection</typeparam>
     /// <typeparam name="TValue">Type of values in collection</typeparam>
     /// <remarks>
-    /// Actually collection is not thread-safe for the moment
+    /// Actually collection is not complete thread-safe for the moment
     /// </remarks>
     public class Mapper<TKey, TValue> : IEnumerable<TValue>
     {
@@ -189,7 +190,7 @@ namespace GisCollection
         /// </summary>
         /// <param name="key">Received key</param>
         /// <param name="propertyName">Property name</param>
-        public List<TValue> this[TKey key, string propertyName]
+        /*public List<TValue> this[TKey key, string propertyName]
         {
             get // only for 2 dims
             {
@@ -261,6 +262,85 @@ namespace GisCollection
                 }
 
                 return slice;
+            }
+        }*/
+
+        public List<TValue> this[TKey key, string excludePropertyName]
+        {
+            get
+            {
+                var res = new List<TValue>();
+                var propertyIndex = Array.FindIndex(KeyProperties, p => p.Name == excludePropertyName);
+                var property = KeyProperties[propertyIndex];
+                
+                var hashes = HashesOfKey(key);
+                var offset = 0;
+                var propertyPower = 0;
+
+                for (var i = 0; i < hashes.Length; i++)
+                {
+                    if (i != propertyIndex)
+                        offset += hashes[i].Fit(_rangePerKey) * _rangePerKey.Pow(KeySize - i - 1);
+                    else
+                        propertyPower = KeySize - i - 1;
+                }
+                
+                for (var i = 0; i < _rangePerKey; i++)
+                {
+                    var index = offset + i * _rangePerKey.Pow(propertyPower);
+
+                    var current = _table[index];
+                    while (current != null)
+                    {
+                        if (IsKeysEqual(current._key, key, property.Name))
+                            res.Add(current._value);
+                        
+                        current = current._next;
+                    }
+                }
+
+                return res;
+            }
+        }
+
+        public List<TValue> this[TKey key, int excludePropertyOrder]
+        {
+            get
+            {
+                var res = new List<TValue>();
+                var propertyIndex = Array.FindIndex(KeyProperties,
+                    p => ((KeyAttribute) p.GetCustomAttribute(typeof(KeyAttribute), false)).Order == excludePropertyOrder);
+
+                if (propertyIndex < 0) throw new ArgumentException($"Wrong property order");
+                var property = KeyProperties[propertyIndex];
+                
+                var hashes = HashesOfKey(key);
+                var offset = 0;
+                var propertyPower = 0;
+
+                for (var i = 0; i < hashes.Length; i++)
+                {
+                    if (i != propertyIndex)
+                        offset += hashes[i].Fit(_rangePerKey) * _rangePerKey.Pow(KeySize - i - 1);
+                    else
+                        propertyPower = KeySize - i - 1;
+                }
+                
+                for (var i = 0; i < _rangePerKey; i++)
+                {
+                    var index = offset + i * _rangePerKey.Pow(propertyPower);
+
+                    var current = _table[index];
+                    while (current != null)
+                    {
+                        if (IsKeysEqual(current._key, key, property.Name))
+                            res.Add(current._value);
+                        
+                        current = current._next;
+                    }
+                }
+
+                return res;
             }
         }
 
@@ -502,6 +582,46 @@ namespace GisCollection
                 });
         }
 
+        /// <summary>
+        /// Comparer of key properties 
+        /// </summary>
+        /// <param name="key1">First key</param>
+        /// <param name="key2">Second key</param>
+        /// <param name="propertyOrder">Excluded property</param>
+        /// <returns>True - if value of not excluded key properties of both received keys is the same. False otherwise.</returns>
+        public static bool IsKeysEqual(TKey key1, TKey key2, int propertyOrder) 
+        {
+            if (key1 == null || key2 == null)
+                throw new ArgumentNullException($"Key value is null");
+//                return false; 
+            
+            return KeyProperties
+                .All(property =>
+                {
+                    var order = ((KeyAttribute) property.GetCustomAttribute(typeof(KeyAttribute), false)).Order;
+                    return order == propertyOrder || property.GetValue(key1).Equals(property.GetValue(key2));
+                });
+        }
+
+        /// <summary>
+        /// Comparer of key properties 
+        /// </summary>
+        /// <param name="key1">First key</param>
+        /// <param name="key2">Second key</param>
+        /// <param name="propertyName">Excluded property</param>
+        /// <returns>True - if value of not excluded key properties of both received keys is the same. False otherwise.</returns>
+        public static bool IsKeysEqual(TKey key1, TKey key2, string propertyName)
+        {
+            // Console.WriteLine($"1: {key1} 2: {key2} = {propertyName}");
+
+            if (key1 == null || key2 == null)
+                throw new ArgumentNullException($"Key value is null");
+//                return false;
+
+            return KeyProperties
+                .All(property => property.Name == propertyName || property.GetValue(key1).Equals(property.GetValue(key2)));
+        }
+        
         /// <summary>
         /// Calculate hash values for received key
         /// </summary>

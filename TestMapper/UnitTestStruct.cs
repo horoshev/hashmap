@@ -142,6 +142,76 @@ namespace Tests
             }
         }
         
+        [Test]
+        public void GetByKeyExcludeId()
+        {
+            var mapper = TestMapper();
+            for (var i = 0; i < Data.Length; i++)
+            {
+                Console.WriteLine($"i: {i}");
+                
+                var key = new UKey() { Name = Data[i].Item1.Name };
+                var actual = mapper[key, 1];
+                var expected = Data
+                    .Where(val => val.Item1.Name == Data[i].Item1.Name)
+                    .Select(val => val.Item2)
+                    .ToList();
+                
+                CollectionAssert.AreEquivalent(expected, actual);
+            }
+        }
+        
+        [Test]
+        public void GetByKeyExcludeName()
+        {
+            var mapper = TestMapper();
+            for (var i = 0; i < Data.Length; i++)
+            {
+                var key = new UKey() { Id = Data[i].Item1.Id, Name = "" };
+                var actual = mapper[key, 2];
+                var expected = Data
+                    .Where(val => val.Item1.Id == Data[i].Item1.Id)
+                    .Select(val => val.Item2)
+                    .ToList();
+                
+                CollectionAssert.AreEquivalent(expected, actual);
+            }
+        }
+     
+        [Test]
+        public void GetByKeyExcludePropertyNameId()
+        {
+            var mapper = TestMapper();
+            for (var i = 0; i < Data.Length; i++)
+            {
+                var key = new UKey() { Name = Data[i].Item1.Name };
+                var actual = mapper[key, "Id"];
+                var expected = Data
+                    .Where(val => val.Item1.Name == Data[i].Item1.Name)
+                    .Select(val => val.Item2)
+                    .ToList();
+                
+                CollectionAssert.AreEquivalent(expected, actual);
+            }
+        }
+
+        [Test]
+        public void GetByKeyExcludePropertyNameName()
+        {
+            var mapper = TestMapper();
+            for (var i = 0; i < Data.Length; i++)
+            {
+                var key = new UKey() { Id = Data[i].Item1.Id, Name = "" };
+                var actual = mapper[key, "Name"];
+                var expected = Data
+                    .Where(val => val.Item1.Id == Data[i].Item1.Id)
+                    .Select(val => val.Item2)
+                    .ToList();
+                
+                CollectionAssert.AreEquivalent(expected, actual);
+            }
+        }
+
         [TestCase(-20)]
         [TestCase(40)]
         public void GetByWrongId(int id)
