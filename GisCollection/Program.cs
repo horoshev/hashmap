@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using System.Linq;
 
-namespace GisCollection.SimpleMapper
+namespace GisCollection
 {
     class Program
     {

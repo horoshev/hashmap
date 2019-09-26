@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
-using GisCollection.SimpleMapper;
 
 namespace GisCollection
 {
@@ -24,6 +23,13 @@ namespace GisCollection
             _hashes = hashes;
         }
 
+        /// <summary>
+        /// Add new node or update current if keys are equal
+        /// </summary>
+        /// <param name="key">Key</param>
+        /// <param name="value">Value</param>
+        /// <param name="hashes">Hashes of key properties</param>
+        /// <param name="added">Out parameter. Represents number of new elements added (0 or 1)</param>
         public void Add(TKey key, TValue value, int[] hashes, out int added)
         {
             if (Mapper<TKey, TValue>.IsKeysEqual(_key, key))
@@ -40,6 +46,10 @@ namespace GisCollection
             }
         }
 
+        /// <summary>
+        /// Method which set <see cref="_next"/> - link to next node
+        /// </summary>
+        /// <param name="next">Represents next node</param>
         public void SetNext(MapperNode<TKey, TValue> next)
         {
             _next = next;

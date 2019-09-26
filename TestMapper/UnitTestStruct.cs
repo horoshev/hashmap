@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using GisCollection;
-using GisCollection.SimpleMapper;
 using NUnit.Framework;
 
 namespace Tests
