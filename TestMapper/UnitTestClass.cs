@@ -1,5 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using GisCollection;
 using GisCollection.SimpleMapper;
 using NUnit.Framework;
@@ -8,52 +12,14 @@ namespace Tests
 {
     public class ClassTests
     {
-        // setup values
-        private static readonly AKey[] KeyData = 
-        {
-            new AKey() { Id = 1, Name = "Kali Byrd"},
-            new AKey() { Id = 1, Name = "Drew Hopkins"},
-            new AKey() { Id = 2, Name = "Nelson Eaton"},
-            new AKey() { Id = 2, Name = "Sally Dickens"},
-            new AKey() { Id = 3, Name = "Kirsten Watt"},
-            new AKey() { Id = 3, Name = "Izaak Griffiths"},
-            new AKey() { Id = 4, Name = "Jimmy Merritt"},
-            new AKey() { Id = 4, Name = "Hattie Glass"},
-            new AKey() { Id = 5, Name = "Jimmy Merritt"},
-            new AKey() { Id = 5, Name = "Hattie Glass"},
-        };
-            
-        private static readonly AValue[] ValData = 
-        {
-            new AValue() { Value = 1, Description = "One" },
-            new AValue() { Value = 2, Description = "Two" },
-            new AValue() { Value = 3, Description = "Three" },
-            new AValue() { Value = 4, Description = "Four" },
-            new AValue() { Value = 5, Description = "Five" },
-            new AValue() { Value = 6, Description = "Six" },
-            new AValue() { Value = 7, Description = "Seven" },
-            new AValue() { Value = 8, Description = "Eight" },
-            new AValue() { Value = 9, Description = "Nine" },
-            new AValue() { Value = 10, Description = "Ten" },
-        };
-        
-        private static readonly (AKey, AValue)[] Data =
-        {
-            (KeyData[0], ValData[0]),
-            (KeyData[1], ValData[1]),
-            (KeyData[2], ValData[2]),
-            (KeyData[3], ValData[3]),
-            (KeyData[4], ValData[4]),
-            (KeyData[5], ValData[5]),
-            (KeyData[6], ValData[6]),
-            (KeyData[7], ValData[7]),
-            (KeyData[8], ValData[8]),
-            (KeyData[9], ValData[9]),
-        };
+        private AKey[] KeyData;
+        private AValue[] ValData;
+        private (AKey, AValue)[] Data;
+        private AKey[] NotAddedKeys;
 
         private Mapper<AKey, AValue> TestMapper()
         {
-            var mapper = new Mapper<AKey, AValue>();
+            var mapper = new Mapper<AKey, AValue>(10);
             
             for (int i = 0; i < KeyData.Length; i++)
                 mapper[KeyData[i]] = ValData[i];
@@ -64,8 +30,80 @@ namespace Tests
         [SetUp]
         public void Setup()
         {
+            NotAddedKeys = new[]
+            {
+                new AKey(){ Id = -28, Name = "Martin"},
+                new AKey(){ Id = -91, Name = "Oliver"},
+                new AKey(){ Id = 10, Name = "Ron"},
+                new AKey(){ Id = 11, Name = "Jason"},
+                new AKey(){ Id = 22, Name = "Gregory"},
+                new AKey(){ Id = 32, Name = "Chuck"},
+                new AKey(){ Id = 34, Name = "Jim"},
+                new AKey(){ Id = 53, Name = "Finn"},
+                new AKey(){ Id = 46, Name = "Otto"},
+                new AKey(){ Id = 74, Name = "Camila"},
+                new AKey(){ Id = 58, Name = "Kevin"},
+                new AKey(){ Id = 95, Name = "Jake"},
+            };
+            
+            KeyData = new []
+            {
+                new AKey(){ Id = -2, Name = "Steward Wise"},
+                new AKey(){ Id = -1, Name = "Matias Strong"},
+                new AKey(){ Id = 1, Name = "Kali Byrd"},
+                new AKey(){ Id = 1, Name = "Drew Hopkins"},
+                new AKey(){ Id = 2, Name = "Nelson Eaton"},
+                new AKey(){ Id = 2, Name = "Sally Dickens"},
+                new AKey(){ Id = 3, Name = "Kirsten Watt"},
+                new AKey(){ Id = 3, Name = "Izaak Griffiths"},
+                new AKey(){ Id = 4, Name = "Jimmy Merritt"},
+                new AKey(){ Id = 4, Name = "Hattie Glass"},
+                new AKey(){ Id = 5, Name = "Jimmy Merritt"},
+                new AKey(){ Id = 5, Name = "Hattie Glass"},
+            };
+            
+            ValData = new []
+            {
+                new AValue() { Value = -2, Description = "Minus Two" },
+                new AValue() { Value = -1, Description = "Minus One" },
+                new AValue() { Value = 1, Description = "One" },
+                new AValue() { Value = 2, Description = "Two" },
+                new AValue() { Value = 3, Description = "Three" },
+                new AValue() { Value = 4, Description = "Four" },
+                new AValue() { Value = 5, Description = "Five" },
+                new AValue() { Value = 6, Description = "Six" },
+                new AValue() { Value = 7, Description = "Seven" },
+                new AValue() { Value = 8, Description = "Eight" },
+                new AValue() { Value = 9, Description = "Nine" },
+                new AValue() { Value = 10, Description = "Ten" },
+            };
+
+            Data = new (AKey, AValue)[KeyData.Length];
+            for (var i = 0; i < KeyData.Length; i++)
+                Data[i] = (Key: KeyData[i], Value: ValData[i]);
         }
 
+        [TestCase(20, 400)]
+        public void InitCorrectly(int range, int expected)
+        {
+            var mapper = new Mapper<AKey, AValue>(range);
+            Assert.AreEqual(expected, mapper.Capacity);
+        }
+
+        [TestCase(-5)]
+        public void InitFailed(int range)
+        {
+            Assert.Catch<Exception>(() => { var mapper = new Mapper<AKey, AValue>(range); });
+        }
+
+        [Test]
+        public void ImplementKeyComparerCorrectly()
+        {
+            for (int i = 0; i < KeyData.Length; i++)
+                for (int j = 0; j < KeyData.Length; j++)
+                    Assert.AreEqual(i == j, KeyData[i].Equals(KeyData[j]), $"Error on {i} {j}");
+        }
+        
         [Test]
         public void AddCorrectly()
         {
@@ -75,127 +113,296 @@ namespace Tests
             {
                 mapper[key] = value;
             }
-            
+
             foreach (var (key, value) in Data)
             {
                 Assert.AreEqual(value, mapper[key]);
             }
         }
-        
+
         [Test]
-        public void AddElements()
+        public void GetByWrongKey()
         {
-            var mapper = new Mapper<Id, Name, int>(10, 100);
-
-            var id = new Id(1);
-            var name = new Name("hi");
-
-            for (int i = 1; i < 5; i++)
-            {
-                id = new Id(i);            
-                mapper[id, name] = 5 + i * 10;
-            }
-            
-            for (int i = 1; i < 5; i++)
-            {
-                id = new Id(i);            
-                Assert.AreEqual(5 + i * 10, mapper[id, name]);
-            }
+            var mapper = TestMapper();
+            var wrongKey = new AKey() { Id = 345, Name = "Vova"};
+            Assert.AreEqual(default(AValue), mapper[wrongKey]);
         }
         
         [Test]
-        public void GetByName()
+        public void GetByCorrectId()
         {
-            Console.WriteLine("name".GetHashCode());
-            var mapper = new Mapper<UKey, UValue>();
-            
-            var key = new UKey {Id = 1, Name = "name"};
-            var key1 = new UKey {Id = 2, Name = "name2"};
-            var key2 = new UKey {Id = 28516, Name = "really random number"};
-            var val = new UValue { Value = 0, Description = "zero" };
+            var mapper = TestMapper();
+            for (var i = 0; i < Data.Length; i++)
+            {
+                var actual = mapper.GetValuesById(Data[i].Item1.Id);
+                var expected = Data
+                    .Where(val => val.Item1.Id == Data[i].Item1.Id)
+                    .Select(val => val.Item2)
+                    .ToList();
                 
-            Console.WriteLine($"key: {key}, key1: {key1}, key2: {key2}");
-            
-            mapper[key] = val;
-            mapper[key1] = val;
-            mapper[key2] = val;
-            Console.WriteLine(mapper[key]);
-            Console.WriteLine(mapper[key1]);
-            
-            var sameKey = new UKey {Id = 1, Name = "name"}; 
-            Console.WriteLine(mapper[sameKey]);
+                CollectionAssert.AreEquivalent(expected, actual);
+            }
         }
-
-        [Test]
-        public void AddDifferentKeys()
+        
+        [TestCase(-20)]
+        [TestCase(40)]
+        public void GetByWrongId(int id)
         {
-            var mapper = new Mapper<UKey, UValue>();
-            // add values
+            var mapper = TestMapper();
+            Assert.AreEqual(new List<AValue>(), mapper.GetValuesById(id));
         }
         
         [Test]
-        public void AddWithSameKey() // should replace
+        public void GetByCorrectName()
         {
-            var mapper = new Mapper<UKey, UValue>();
-            // add values
+            var mapper = TestMapper();
+            for (var i = 0; i < Data.Length; i++)
+            {
+                var actual = mapper.GetValuesByName(Data[i].Item1.Name);
+                var expected = Data
+                    .Where(val => val.Item1.Name == Data[i].Item1.Name)
+                    .Select(val => val.Item2)
+                    .ToList();
+                
+                CollectionAssert.AreEquivalent(expected, actual);
+            }
+        }
+
+        [TestCase("")]
+        [TestCase("Vova")]
+        public void GetByWrongName(string name)
+        {
+            var mapper = TestMapper();
+            Assert.AreEqual(new List<AValue>(), mapper.GetValuesByName(name));
+        }
+        
+        [Test]
+        public void GetByNullName()
+        {
+            var mapper = TestMapper();
+            Assert.Catch<ArgumentNullException>(() => mapper.GetValuesByName(null));
+        }
+
+        [Test]
+        public void UpdateValues()
+        {
+            var mapper = TestMapper();
+            var newValues = ValData.Reverse().ToArray();
+
+            for (var i = 0; i < Data.Length; i++)
+            {
+                mapper[Data[i].Item1] = newValues[i];
+            }
+            
+            for (var i = 0; i < Data.Length; i++)
+            {
+                Assert.AreEqual(newValues[i], mapper[Data[i].Item1]);
+            }
         }
 
         [Test]
         public void RemoveExistingKeys()
         {
+            var mapper = TestMapper();
             
+            foreach (var (key, value) in Data)
+            {
+                mapper.RemoveKey(key);
+                Assert.AreEqual(default(AValue), mapper[key]);
+            }
         }
         
         [Test]
         public void RemoveNonExistingKeys()
         {
-            
-        }
-        
-        [Test]
-        public void ThreadsUnsafeWrite()
-        {
-            
-        }
-
-        [Test]
-        public void GetValuesById()
-        {
             var mapper = TestMapper();
 
-            var res = mapper[KeyData[1], "Id"];
-            foreach (var val in res)
+            foreach (var _key in NotAddedKeys)
             {
-                Console.WriteLine(val.ToString());
-            }
-        }
-        
-        [Test]
-        public void GetValuesByName()
-        {
-            var mapper = TestMapper();
-
-            var res = mapper[KeyData[1], "Name"];
-            foreach (var val in res)
-            {
-                Console.WriteLine(val.ToString());
+                mapper.RemoveKey(_key);
+                foreach (var (key, value) in Data)
+                {
+                    Assert.AreEqual(value, mapper[key]);
+                }    
             }
         }
 
-        [Test]
-        public void ReturnClass()
+        [TestCase(2)]
+        [TestCase(3)]
+        [TestCase(5)]
+        [TestCase(7)]
+        [TestCase(8)]
+        public void GetKeysImplementedCorrect(int n)
         {
-            UKey[] keys = {
-                new UKey() {Id = 1, Name = "Name"}
+            var mapper = TestMapper();
+            CollectionAssert.AreEquivalent(KeyData, mapper.GetKeys());
+            
+            // Remove first n
+            var remove = KeyData.Take(n).ToArray();
+            foreach (var key in remove)
+                mapper.RemoveKey(key);
+
+            // Check again
+            var contain = KeyData.Skip(n);
+            CollectionAssert.AreEquivalent(contain, mapper.GetKeys());
+        }
+        
+        [TestCase(2)]
+        [TestCase(3)]
+        [TestCase(5)]
+        [TestCase(7)]
+        [TestCase(8)]
+        public void ContainKeyImplementedCorrect(int n)
+        {
+            var mapper = TestMapper();
+            foreach (var key in KeyData)
+                Assert.True(mapper.ContainsKey(key));
+            
+            // Remove first n
+            var remove = KeyData.Take(n).ToArray();
+            foreach (var key in remove)
+                mapper.RemoveKey(key);
+
+            foreach (var key in remove)
+                Assert.False(mapper.ContainsKey(key));
+            
+            // Check again
+            var contain = KeyData.Skip(n);
+            foreach (var key in contain)
+                Assert.True(mapper.ContainsKey(key));
+            
+            foreach (var key in NotAddedKeys)
+                Assert.False(mapper.ContainsKey(key));
+        }
+
+        [Test]
+        public void CollectionResizeCorrectly()
+        {
+            var mapper = new Mapper<AKey, AValue>(10);
+            var keys = new List<AKey>();
+            var capacity = mapper.Capacity;
+            var id = 0;
+            while (!mapper.Full)
+            {
+                var key = new AKey() { Id = id, Name = id.ToString() };
+                var value = new AValue() { Value = id, Description = $"id: {id}" };
+                mapper[key] = value;
+                keys.Add(key);
+                id++;
+            }
+            
+            // one more key for resize
+            var lastKey = new AKey() { Id = id, Name = id.ToString() };
+            var lastValue = new AValue() { Value = id, Description = $"id: {id}" };
+            mapper[lastKey] = lastValue;
+            keys.Add(lastKey);
+
+            foreach (var key in keys)
+            {
+                Assert.AreEqual(new AValue() { Value = key.Id, Description = $"id: {key.Id}" }, mapper[key]);
+            }
+            
+            Assert.AreEqual(capacity * Math.Pow(2, mapper.keySize), mapper.Capacity, 1e-7);
+        }
+
+        [Test]
+        public void EnumeratorImplementedCorrectly()
+        {
+            CollectionAssert.AreEquivalent(ValData, TestMapper());
+        }
+        
+        private readonly Mapper<AKey, AValue> _shared = new Mapper<AKey, AValue>(32);
+        
+        [Test]
+        public async Task ThreadsUnsafeWrite()
+        {
+            /*
+             * Idea:
+             * 
+             *   (Full table start resize)
+             *   |
+             *   |    (Other Thread write new values)
+             *   |    |
+             *   |    |    (Table stop resizing)
+             *   |    |    |
+             *   |    |    |    (Other Thread write values to resized table)
+             * __|____|____|____|______________________________
+             * Timeline
+             *
+             * In resized table some first values from old table which
+             * not changed by other thread
+             * Which means data in table inconsistent
+             * (But it did not work)
+             */
+            
+            var tasks = new List<Task>
+            {
+                AddingValues(),
+                ChangingValues(),
             };
-            
-            Console.WriteLine($"before: {keys[0].ToString()}");
 
-            var key = keys[0];
-            key.Id = 2;
-            key.Name += "2";
-            Console.WriteLine($"list: {keys[0].ToString()}");
-            Console.WriteLine($"after: {key.ToString()}");
+            await Task.WhenAll(tasks);
+            
+            for (var i = 0; i < _shared.Size; i++)
+            {
+                var key = new AKey() { Id = i, Name = i.ToString() };
+                Console.WriteLine(_shared[key]);
+            }
+            // Test
+        }
+
+        private Task ChangingValues()
+        {
+            var task = new Task(() =>
+            {
+                Thread.Sleep(800);
+
+                Console.WriteLine($"change start| size: {_shared.Size} capacity: {_shared.Capacity}");
+
+                for (var i = 0; i < _shared.Size; i++)
+                {
+                    var key = new AKey() { Id = i, Name = i.ToString() };
+                    var value = new AValue() { Value = 0, Description = "Zero" };
+//                    Thread.Sleep(1);
+                    _shared[key] = value;
+                }
+
+                Console.WriteLine($"change end| size: {_shared.Size} capacity: {_shared.Capacity}");
+            });
+            
+            task.Start();
+            return task;
+        }
+        
+        private Task AddingValues()
+        {
+            var task = new Task(() =>
+            {
+                Console.WriteLine($"add before| size: {_shared.Size} capacity: {_shared.Capacity}");
+                
+                // Add values until collection start resizing
+                var id = 0;
+                while (!_shared.Full)
+                {
+                    var key = new AKey() { Id = id, Name = id.ToString() };
+                    var value = new AValue() { Value = 1, Description = "One" };
+                    _shared[key] = value;
+                    id++;
+                }
+                
+                Console.WriteLine($"add full| size: {_shared.Size} capacity: {_shared.Capacity}");
+                
+                var _key = new AKey() { Id = id, Name = id.ToString() };
+                var _value = new AValue() { Value = 1, Description = "One" };
+                _shared[_key] = _value;
+
+                Console.WriteLine($"add resize| size: {_shared.Size} capacity: {_shared.Capacity}");
+
+//                Thread.Sleep(5000);
+            });
+            
+            task.Start();
+            return task;
         }
     }
 }

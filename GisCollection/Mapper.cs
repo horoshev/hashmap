@@ -111,7 +111,7 @@ namespace GisCollection
                 throw new ArgumentException($"{nameof(initRangePerKey)} should be > 0");
             
             _rangePerKey = initRangePerKey;
-            _table = new MapperNode<TKey, TValue>[(int) Math.Pow(_rangePerKey, KeySize)];
+            _table = new MapperNode<TKey, TValue>[_rangePerKey.Pow(KeySize)];
             _keys = new List<TKey>();
             Size = NonEmptyNodes = 0;
         }
@@ -140,7 +140,7 @@ namespace GisCollection
                 if (key == null) throw new ArgumentNullException(nameof(key));
                 if (value == null) throw new ArgumentNullException(nameof(value));
 
-                _keys.Add(key); // should be unique but cause performance
+                lock (_keys) _keys.Add(key); // should be unique but cause performance
                 
                 if (NonEmptyNodes == Capacity) ExpandTable();
                 
@@ -148,7 +148,7 @@ namespace GisCollection
                 var index = HashesToTableIndex(hashes, _rangePerKey);
                 
 //                Console.WriteLine($"set index: {index}");
-                
+
                 if (_table[index] == null)
                 {
                     _table[index] = new MapperNode<TKey, TValue>(key, value, hashes, null);
@@ -157,20 +157,27 @@ namespace GisCollection
                 }
                 else
                 {
-                    _table[index].Add(key, value, hashes, out var added);
-                    Size += added;
+                    lock (_table[index])
+                    {
+                        _table[index].Add(key, value, hashes, out var added);
+                        Size += added;
+                    }
                 }
             }
             get
             {
                 var index = KeyToTableIndex(key, _rangePerKey);
                 var node = _table[index];
-                
                 while (node != null)
-                    if (IsKeysEqual(node._key, key))
-                        return node._value;
-                    else //if (node._next != null)
-                        node = node._next;
+                {
+                    lock (node)
+                    {
+                        if (IsKeysEqual(node._key, key))
+                            return node._value;
+                        else
+                            node = node._next;
+                    }
+                }
 
                 return default(TValue);
             }
@@ -267,7 +274,6 @@ namespace GisCollection
         {
             var res = new List<TValue>();
             var idIndex = id.GetHashCode().Abs().Fit(_rangePerKey);
-            // Console.WriteLine($"{nameof(idIndex)}: {idIndex}");
             
             var data = KeyProperties.Select((value, index) => (index: index + 1, name: value.Name));
             var powerId = KeySize - data.First(value => value.name == "Id").index;
@@ -277,16 +283,18 @@ namespace GisCollection
             for (var i = 0; i < _rangePerKey; i++)
             {
                 var index = offset + i * _rangePerKey.Pow(powerName);
-                
                 if (_table[index] == null) continue;
-                
-                var key = _table[index]._key;
-                var isIdSame = KeyProperties
-                    .Where(property => property.Name == "Id")
-                    .Select(property => property.GetValue(key).Equals(id))
-                    .First();
 
-                if (isIdSame) res.Add(_table[index]._value);
+                lock (_table[index])
+                {
+                    var key = _table[index]._key;
+                    var isIdSame = KeyProperties
+                        .Where(property => property.Name == "Id")
+                        .Select(property => property.GetValue(key).Equals(id))
+                        .First();
+
+                    if (isIdSame) res.Add(_table[index]._value);
+                }
             }
             
             return res;
@@ -314,16 +322,18 @@ namespace GisCollection
             for (var i = 0; i < _rangePerKey; i++)
             {
                 var index = offset + i * _rangePerKey.Pow(powerId);
-                
                 if (_table[index] == null) continue;
-                
-                var key = _table[index]._key;
-                var isNameSame = KeyProperties
-                    .Where(property => property.Name == "Name")
-                    .Select(property => property.GetValue(key).Equals(name))
-                    .First();
 
-                if (isNameSame) res.Add(_table[index]._value);
+                lock (_table[index])
+                {
+                    var key = _table[index]._key;
+                    var isNameSame = KeyProperties
+                        .Where(property => property.Name == "Name")
+                        .Select(property => property.GetValue(key).Equals(name))
+                        .First();
+
+                    if (isNameSame) res.Add(_table[index]._value);
+                }
             }
             
             return res;
@@ -337,27 +347,31 @@ namespace GisCollection
         {
             var index = KeyToTableIndex(key, _rangePerKey);
             if (_table[index] == null) return;
-            if (IsKeysEqual(_table[index]._key, key))
+            
+            lock (_table[index])
             {
-                _table[index] = _table[index]._next;
-                RemoveKeyFromArray(key);
-                return;
-            }
-
-            var previous = _table[index];
-            var current = _table[index]._next;
-
-            while (current != null)
-            {
-                if (IsKeysEqual(current._key, key))
+                if (IsKeysEqual(_table[index]._key, key))
                 {
-                    previous.SetNext(current._next);
-                    RemoveKeyFromArray(current._key);
+                    _table[index] = _table[index]._next;
+                    RemoveKeyFromArray(key);
+                    return;
                 }
-                else if (current._next != null)
+
+                var previous = _table[index];
+                var current = _table[index]._next;
+
+                while (current != null)
                 {
-                    previous = current;
-                    current = current._next;
+                    if (IsKeysEqual(current._key, key))
+                    {
+                        previous.SetNext(current._next);
+                        RemoveKeyFromArray(current._key);
+                    }
+                    else if (current._next != null)
+                    {
+                        previous = current;
+                        current = current._next;
+                    }
                 }
             }
         }
@@ -368,9 +382,9 @@ namespace GisCollection
         /// <param name="value">Value to remove</param>
         public void RemoveValue(TValue value) { }
 
-        private void RemoveKeyFromArray(TKey key)
+        private void RemoveKeyFromArray(TKey removeKey)
         {
-            _keys.RemoveAll(_key => IsKeysEqual(_key, key));
+            lock (_keys) _keys.RemoveAll(key => IsKeysEqual(key, removeKey));
         }
         
         /// <summary>
@@ -395,36 +409,40 @@ namespace GisCollection
             var newNonEmptyNodes = 0;
             var newRangePerKey = _rangePerKey * 2;
             var newTable = new MapperNode<TKey, TValue>[newRangePerKey.Pow(KeySize)];
-            
-            for (int i = 0; i < _table.Length; i++)
+
+            lock (_table)
             {
-                MapperNode<TKey, TValue> current = _table[i];
-                //Thread.Sleep(1);
-                while (current != null)
+                for (int i = 0; i < _table.Length; i++)
                 {
-                    var index = HashesToTableIndex(current._hashes, newRangePerKey);
-                    
-                    if (newTable[index] == null)
+                    MapperNode<TKey, TValue> current = _table[i];
+                    //Thread.Sleep(1);
+                    while (current != null)
                     {
-                        newTable[index] = new MapperNode<TKey, TValue>(current._key, current._value, current._hashes, null);
-                        newNonEmptyNodes++;
-                        newSize++;
+                        var index = HashesToTableIndex(current._hashes, newRangePerKey);
+
+                        if (newTable[index] == null)
+                        {
+                            newTable[index] =
+                                new MapperNode<TKey, TValue>(current._key, current._value, current._hashes, null);
+                            newNonEmptyNodes++;
+                            newSize++;
+                        }
+                        else
+                        {
+                            newTable[index].Add(current._key, current._value, current._hashes, out var added);
+                            newSize += added;
+                        }
+
+                        current = current._next;
                     }
-                    else
-                    {
-                        newTable[index].Add(current._key, current._value, current._hashes, out var added);
-                        newSize += added;
-                    }
-                    
-                    current = current._next;
                 }
+
+                _rangePerKey = newRangePerKey;
+                _table = newTable;
+
+                NonEmptyNodes = newNonEmptyNodes;
+                Size = newSize;
             }
-
-            _rangePerKey = newRangePerKey;
-            _table = newTable;
-
-            NonEmptyNodes = newNonEmptyNodes;
-            Size = newSize;
         }
 
         /// <summary>
@@ -436,10 +454,10 @@ namespace GisCollection
         {
             _rangePerKey = initTableDimSize;
             _table = new MapperNode<TKey, TValue>[(int) Math.Pow(_rangePerKey, KeySize)];
-            _keys = new List<TKey>();
+            lock (_keys) _keys = new List<TKey>();
             Size = NonEmptyNodes = 0;
         }
-
+        
         /// <summary>
         /// Gets a list containing all the keys in the collection.
         /// </summary>

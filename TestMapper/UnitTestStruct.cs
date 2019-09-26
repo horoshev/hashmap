@@ -140,14 +140,11 @@ namespace Tests
                     .Select(val => val.Item2)
                     .ToList();
                 
-                foreach (var val in expected)
-                {
-                    Assert.That(actual.Any(value => value.Equals(val)));
-                }
+                CollectionAssert.AreEquivalent(expected, actual);
             }
         }
         
-        [TestCase(-1)]
+        [TestCase(-20)]
         [TestCase(40)]
         public void GetByWrongId(int id)
         {
@@ -167,10 +164,7 @@ namespace Tests
                     .Select(val => val.Item2)
                     .ToList();
                 
-                foreach (var val in expected)
-                {
-                    Assert.That(actual.Any(value => value.Equals(val)));
-                }
+                CollectionAssert.AreEquivalent(expected, actual);
             }
         }
 
