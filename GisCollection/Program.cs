@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
 
 namespace GisCollection.SimpleMapper
@@ -52,21 +53,12 @@ namespace GisCollection.SimpleMapper
     {
         static void Main()
         {
-            var mapper = new Mapper<Id, Name, int>(10, 100);
-
-            var id = new Id(1);
-            var name = new Name("hi");
-            
-//            mapper[id, name] = 5;
-//            Console.WriteLine(mapper[id, name]);
-            
-            for (int i = 1; i < 5; i++)
+            var watch = new Stopwatch();
+            watch.Start();
+            for (; watch.ElapsedMilliseconds < 500;)
             {
-                id = new Id(i);            
-                mapper[id, name] = 5 + i * 10;
+                Console.WriteLine($".{watch.ElapsedMilliseconds}.");
             }
-            
-            Console.WriteLine(mapper[name].Where(x => x != 0).Count());       
         }
     }
 }
