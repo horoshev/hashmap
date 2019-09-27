@@ -1,15 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.Design;
-
-namespace GisCollection
+﻿namespace GisCollection
 {
-    public class MapperNode<TKey, TValue>
+    internal class MapperNode<TKey, TValue>
     {
         internal readonly TKey _key;
         internal TValue _value;
-        internal volatile MapperNode<TKey, TValue> _next;
         internal readonly int[] _hashes;
+        internal volatile MapperNode<TKey, TValue> _next;
 
         internal MapperNode(
             TKey key,
@@ -19,12 +15,12 @@ namespace GisCollection
         {
             _key = key;
             _value = value;
-            _next = next;
             _hashes = hashes;
+            _next = next;
         }
 
         /// <summary>
-        /// Add new node or update current if keys are equal
+        /// Add a new node or update current if keys are equal
         /// </summary>
         /// <param name="key">Key</param>
         /// <param name="value">Value</param>
@@ -47,32 +43,12 @@ namespace GisCollection
         }
 
         /// <summary>
-        /// Method which set <see cref="_next"/> - link to next node
+        /// Method sets <see cref="_next"/> - link to next node
         /// </summary>
         /// <param name="next">Represents next node</param>
         public void SetNext(MapperNode<TKey, TValue> next)
         {
             _next = next;
         }
-        
-//        public List<TValue> GetChain()
-//        {
-//            var chain = new List<TValue>();
-//            var next = this;
-//
-//            while (next != null && next._value != null)
-//            {
-//                chain.Add(next._value);
-//                next = next._next;
-//            }
-//
-//            return chain;
-//        }
-
-//        public List<TValue> GetValues(TKey key, string propertyName)
-//        {
-//            throw new NotImplementedException();
-//        }
     }
-
 }

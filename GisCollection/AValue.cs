@@ -7,24 +7,28 @@ namespace GisCollection
         public int Value { get; set;}
         public string Description { get; set; }
 
-        public bool Equals(AValue item)
+        private bool Equals(AValue item)
         {
             return (Value == item.Value) && (Description == item.Description);
         }
         
         public override bool Equals(object obj)
         {
-            if (obj == null)
-                return false;
-                    
-            return Equals(obj as AValue ?? throw new ArgumentException(nameof(obj) + " has wrong type"));
+            return obj != null && 
+                   Equals(obj as AValue ?? throw new ArgumentException(nameof(obj) + " has wrong type"));
         }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                return (Value * 271) ^ (Description != null ? Description.GetHashCode() : 0);
+            }
+        }
+
         public override string ToString()
         {
             return $"{Description}: {Value}";
         }
-
-      
-        
     }
 }

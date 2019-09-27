@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using GisCollection;
 using NUnit.Framework;
 
@@ -148,8 +146,6 @@ namespace Tests
             var mapper = TestMapper();
             for (var i = 0; i < Data.Length; i++)
             {
-                Console.WriteLine($"i: {i}");
-                
                 var key = new UKey() { Name = Data[i].Item1.Name };
                 var actual = mapper[key, 1];
                 var expected = Data
@@ -294,6 +290,14 @@ namespace Tests
                 }    
             }
         }
+        
+        [Test]
+        public void GetValueOfNonExistingKeys()
+        {
+            var mapper = TestMapper();
+            foreach (var _key in NotAddedKeys)
+                Assert.AreEqual(default(UValue), mapper[_key]);
+        }
 
         [TestCase(2)]
         [TestCase(3)]
@@ -377,100 +381,6 @@ namespace Tests
         public void EnumeratorImplementedCorrectly()
         {
             CollectionAssert.AreEquivalent(ValData, TestMapper());
-        }
-        
-        private readonly Mapper<UKey, UValue> _shared = new Mapper<UKey, UValue>(32);
-        
-        [Test]
-        public async Task ThreadsUnsafeWrite()
-        {
-            /*
-             * Idea:
-             * 
-             *   (Full table start resize)
-             *   |
-             *   |    (Other Thread write new values)
-             *   |    |
-             *   |    |    (Table stop resizing)
-             *   |    |    |
-             *   |    |    |    (Other Thread write values to resized table)
-             * __|____|____|____|______________________________
-             * Timeline
-             *
-             * In resized table some first values from old table which
-             * not changed by other thread
-             * Which means data in table inconsistent
-             * (But it did not work)
-             */
-            
-            var tasks = new List<Task>
-            {
-                AddingValues(),
-                ChangingValues(),
-            };
-
-            await Task.WhenAll(tasks);
-            
-            for (var i = 0; i < _shared.Size; i++)
-            {
-                var key = new UKey() { Id = i, Name = i.ToString() };
-                Console.WriteLine(_shared[key]);
-            }
-            // Test
-        }
-
-        private Task ChangingValues()
-        {
-            var task = new Task(() =>
-            {
-                Thread.Sleep(800);
-
-                Console.WriteLine($"change start| size: {_shared.Size} capacity: {_shared.Capacity}");
-
-                for (var i = 0; i < _shared.Size; i++)
-                {
-                    var key = new UKey() { Id = i, Name = i.ToString() };
-                    var value = new UValue() { Value = 0, Description = "Zero" };
-//                    Thread.Sleep(1);
-                    _shared[key] = value;
-                }
-
-                Console.WriteLine($"change end| size: {_shared.Size} capacity: {_shared.Capacity}");
-            });
-            
-            task.Start();
-            return task;
-        }
-        
-        private Task AddingValues()
-        {
-            var task = new Task(() =>
-            {
-                Console.WriteLine($"add before| size: {_shared.Size} capacity: {_shared.Capacity}");
-                
-                // Add values until collection start resizing
-                var id = 0;
-                while (!_shared.Full)
-                {
-                    var key = new UKey() { Id = id, Name = id.ToString() };
-                    var value = new UValue() { Value = 1, Description = "One" };
-                    _shared[key] = value;
-                    id++;
-                }
-                
-                Console.WriteLine($"add full| size: {_shared.Size} capacity: {_shared.Capacity}");
-                
-                var _key = new UKey() { Id = id, Name = id.ToString() };
-                var _value = new UValue() { Value = 1, Description = "One" };
-                _shared[_key] = _value;
-
-                Console.WriteLine($"add resize| size: {_shared.Size} capacity: {_shared.Capacity}");
-
-//                Thread.Sleep(5000);
-            });
-            
-            task.Start();
-            return task;
         }
     }
 }

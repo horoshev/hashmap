@@ -1,1 +1,5 @@
-.idea/ 
+.idea/
+GisCollection/bin/
+GisCollection/obj/
+TestMapper/bin/
+TestMapper/obj/

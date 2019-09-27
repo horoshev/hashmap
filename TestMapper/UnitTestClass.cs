@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using GisCollection;
 using NUnit.Framework;
 
@@ -141,6 +139,75 @@ namespace Tests
                 CollectionAssert.AreEquivalent(expected, actual);
             }
         }
+
+        [Test]
+        public void GetByKeyExcludeId()
+        {
+            var mapper = TestMapper();
+            for (var i = 0; i < Data.Length; i++)
+            {
+                var key = new AKey() { Name = Data[i].Item1.Name };
+                var actual = mapper[key, 1];
+                var expected = Data
+                    .Where(val => val.Item1.Name == Data[i].Item1.Name)
+                    .Select(val => val.Item2)
+                    .ToList();
+                
+                CollectionAssert.AreEquivalent(expected, actual);
+            }
+        }
+        
+        [Test]
+        public void GetByKeyExcludeName()
+        {
+            var mapper = TestMapper();
+            for (var i = 0; i < Data.Length; i++)
+            {
+                var key = new AKey() { Id = Data[i].Item1.Id, Name = "" };
+                var actual = mapper[key, 2];
+                var expected = Data
+                    .Where(val => val.Item1.Id == Data[i].Item1.Id)
+                    .Select(val => val.Item2)
+                    .ToList();
+                
+                CollectionAssert.AreEquivalent(expected, actual);
+            }
+        }
+     
+        [Test]
+        public void GetByKeyExcludePropertyNameId()
+        {
+            var mapper = TestMapper();
+            for (var i = 0; i < Data.Length; i++)
+            {
+                var key = new AKey() { Name = Data[i].Item1.Name };
+                var actual = mapper[key, "Id"];
+                var expected = Data
+                    .Where(val => val.Item1.Name == Data[i].Item1.Name)
+                    .Select(val => val.Item2)
+                    .ToList();
+                
+                CollectionAssert.AreEquivalent(expected, actual);
+            }
+        }
+
+        [Test]
+        public void GetByKeyExcludePropertyNameName()
+        {
+            var mapper = TestMapper();
+            for (var i = 0; i < Data.Length; i++)
+            {
+                var key = new AKey() { Id = Data[i].Item1.Id, Name = "" };
+                var actual = mapper[key, "Name"];
+                var expected = Data
+                    .Where(val => val.Item1.Id == Data[i].Item1.Id)
+                    .Select(val => val.Item2)
+                    .ToList();
+                
+                CollectionAssert.AreEquivalent(expected, actual);
+            }
+        }
+
         
         [TestCase(-20)]
         [TestCase(40)]
@@ -225,6 +292,14 @@ namespace Tests
             }
         }
 
+        [Test]
+        public void GetValueOfNonExistingKeys()
+        {
+            var mapper = TestMapper();
+            foreach (var _key in NotAddedKeys)
+                Assert.AreEqual(default(AValue), mapper[_key]);
+        }
+        
         [TestCase(2)]
         [TestCase(3)]
         [TestCase(5)]
@@ -307,100 +382,6 @@ namespace Tests
         public void EnumeratorImplementedCorrectly()
         {
             CollectionAssert.AreEquivalent(ValData, TestMapper());
-        }
-        
-        private readonly Mapper<AKey, AValue> _shared = new Mapper<AKey, AValue>(32);
-        
-        [Test]
-        public async Task ThreadsUnsafeWrite()
-        {
-            /*
-             * Idea:
-             * 
-             *   (Full table start resize)
-             *   |
-             *   |    (Other Thread write new values)
-             *   |    |
-             *   |    |    (Table stop resizing)
-             *   |    |    |
-             *   |    |    |    (Other Thread write values to resized table)
-             * __|____|____|____|______________________________
-             * Timeline
-             *
-             * In resized table some first values from old table which
-             * not changed by other thread
-             * Which means data in table inconsistent
-             * (But it did not work)
-             */
-            
-            var tasks = new List<Task>
-            {
-                AddingValues(),
-                ChangingValues(),
-            };
-
-            await Task.WhenAll(tasks);
-            
-            for (var i = 0; i < _shared.Size; i++)
-            {
-                var key = new AKey() { Id = i, Name = i.ToString() };
-                Console.WriteLine(_shared[key]);
-            }
-            // Test
-        }
-
-        private Task ChangingValues()
-        {
-            var task = new Task(() =>
-            {
-                Thread.Sleep(800);
-
-                Console.WriteLine($"change start| size: {_shared.Size} capacity: {_shared.Capacity}");
-
-                for (var i = 0; i < _shared.Size; i++)
-                {
-                    var key = new AKey() { Id = i, Name = i.ToString() };
-                    var value = new AValue() { Value = 0, Description = "Zero" };
-//                    Thread.Sleep(1);
-                    _shared[key] = value;
-                }
-
-                Console.WriteLine($"change end| size: {_shared.Size} capacity: {_shared.Capacity}");
-            });
-            
-            task.Start();
-            return task;
-        }
-        
-        private Task AddingValues()
-        {
-            var task = new Task(() =>
-            {
-                Console.WriteLine($"add before| size: {_shared.Size} capacity: {_shared.Capacity}");
-                
-                // Add values until collection start resizing
-                var id = 0;
-                while (!_shared.Full)
-                {
-                    var key = new AKey() { Id = id, Name = id.ToString() };
-                    var value = new AValue() { Value = 1, Description = "One" };
-                    _shared[key] = value;
-                    id++;
-                }
-                
-                Console.WriteLine($"add full| size: {_shared.Size} capacity: {_shared.Capacity}");
-                
-                var _key = new AKey() { Id = id, Name = id.ToString() };
-                var _value = new AValue() { Value = 1, Description = "One" };
-                _shared[_key] = _value;
-
-                Console.WriteLine($"add resize| size: {_shared.Size} capacity: {_shared.Capacity}");
-
-//                Thread.Sleep(5000);
-            });
-            
-            task.Start();
-            return task;
         }
     }
 }
