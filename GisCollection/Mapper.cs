@@ -163,13 +163,15 @@ namespace GisCollection
                 var node = _table[index];
                 while (node != null)
                 {
+                    MapperNode<TKey, TValue> next;
                     lock (node)
                     {
                         if (IsKeysEqual(node._key, key))
                             return node._value;
-                        else
-                            node = node._next;
+                        
+                        next = node._next;
                     }
+                    node = next;
                 }
 
                 return default(TValue);
@@ -212,13 +214,15 @@ namespace GisCollection
                     var current = _table[index];
                     while (current != null)
                     {
+                        MapperNode<TKey, TValue> next;
                         lock (current)
                         {
                             if (IsKeysEqual(current._key, key, property.Name))
                                 res.Add(current._value);
-                        
-                            current = current._next;
+
+                            next = current._next;
                         }
+                        current = next;
                     }
                 }
 
@@ -376,6 +380,7 @@ namespace GisCollection
                 var current = _table[index];
                 while (current != null)
                 {
+                    MapperNode<TKey, TValue> next;
                     lock (current)
                     {
                         var key = current._key;
@@ -385,8 +390,9 @@ namespace GisCollection
                             .First();
 
                         if (isNameSame) res.Add(current._value);
-                        current = current._next;
+                        next = current._next;
                     }
+                    current = next;
                 }
             }
 
